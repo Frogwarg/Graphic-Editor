@@ -1,0 +1,474 @@
+Форма:
+private int toolIndex=0;
+        private int methIndex = 0;
+        private Point startPoint, currentPoint, dragStart, dragEnd;
+        private Button currentButton = null;
+        private int initialBorderSize = 1;
+        private bool mooved = false;
+        private bool isPressed = false;
+        private bool isDragged = false;
+        private bool cleared = false;
+        double dragTime= 10;
+        private ArrayPoints arrayPoints = new ArrayPoints(2);
+        Bitmap map = new Bitmap(100, 100);
+        Graphics graphics;
+        Graphics graphor;
+        Line l;
+        Pen pen = new Pen(Color.Black, 3f);
+        Pen eraser = new Pen(Color.White, 3f);
+        private void SetSize()
+        {
+            //Rectangle rectangle = Screen.PrimaryScreen.Bounds;
+            map = new Bitmap(pictureBox1.Size.Width, pictureBox1.Size.Height);
+            graphics = Graphics.FromImage(map);
+            graphics.Clear(pictureBox1.BackColor);
+            pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+            pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+            eraser.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+            eraser.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+        }
+        public Form1()
+        {
+            InitializeComponent();
+            SetSize();
+            timer1.Interval = 5;
+            initialBorderSize = button3.FlatAppearance.BorderSize;
+            pen.Width = thickBar.Value;
+            button11.BackColor = pen.Color;
+            label2.Text = thickBar.Value.ToString();
+            comboBox1.Text = comboBox1.Items[0].ToString();
+        }
+        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            isPressed = true;
+            mooved = false;
+            if (toolIndex == 2)
+            {
+                Fill(e.X, e.Y, pen.Color);
+            }
+            if (toolIndex == 3)
+            {
+                pen.Color = map.GetPixel(e.X, e.Y);
+                button11.BackColor = pen.Color;
+            }
+            if (l != null && toolIndex == 4)
+            {
+                if (IsBetween(l.startPoint.X, l.startPoint.Y, l.endPoint.X, l.endPoint.Y, e.X, e.Y))
+                {
+                    dragStart = e.Location;
+                    isDragged = true;
+                }
+            }
+            /*if (!isDragged)
+            {
+                startPoint = e.Location;
+            }*/
+            startPoint = e.Location;
+        }
+        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
+        {
+            mooved = true;
+            if (!isPressed) {
+                if (l != null && toolIndex==4)
+                {
+                    if (IsBetween(l.startPoint.X, l.startPoint.Y, l.endPoint.X, l.endPoint.Y, e.X, e.Y))
+                    {
+                        pictureBox1.Cursor = Cursors.SizeAll;
+                    }
+                    else
+                    {
+                        pictureBox1.Cursor = Cursors.Default;
+                    }
+                }
+                return; 
+            }
+            if (toolIndex == 0)
+            {
+                arrayPoints.SetPoint(e.X, e.Y);
+                if (arrayPoints.GetCount() >= 2)
+                {
+                    graphics.DrawLines(pen, arrayPoints.GetPoints());
+                    pictureBox1.Image = map;
+                    arrayPoints.SetPoint(e.X, e.Y);
+                }
+            }
+            if (toolIndex == 1)
+            {
+                arrayPoints.SetPoint(e.X, e.Y);
+                if (arrayPoints.GetCount() >= 2)
+                {
+                    graphics.DrawLines(eraser, arrayPoints.GetPoints());
+                    pictureBox1.Image = map;
+                    arrayPoints.SetPoint(e.X, e.Y);
+                }
+            }
+            currentPoint = e.Location;
+            if (isDragged)
+            {
+                dragEnd = e.Location;
+                l.Dragg(dragStart, dragEnd);
+                //startPoint = l.startPoint;
+                //currentPoint = l.endPoint;
+                dragStart = dragEnd;
+                //pictureBox1.Invalidate();
+            } else
+            {
+                currentPoint = e.Location;
+            }
+            pictureBox1.Invalidate();
+            //pictureBox1.Image = map;
+        }
+        private void pictureBox1_Paint(object sender, PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            graphor = e.Graphics;
+            if (mooved)
+            {
+                if (toolIndex == 4)
+                {
+                    if (isDragged)
+                    {
+                        //e.Graphics.Clear(pictureBox1.BackColor);
+                        if (l != null)
+                        {
+                            //dragEnd = currentPoint;
+                            l.Draw(g);
+                            //dragStart = dragEnd;
+                            timer1.Start();
+                            dragTime= 0;
+                            //pictureBox1.Image = map;
+                        }
+                    }else
+                    {
+                        //g.DrawImage(map,0,0);
+                        l = new Line(startPoint, currentPoint, pen);
+                        l.gra = g;
+                        l.Draw(g);
+                        //pictureBox1.Image = map;
+                    }
+                }
+            }
+            
+            if (cleared)
+            {
+                cleared = false;
+                l = null;
+                e.Graphics.Clear(pictureBox1.BackColor);
+            }
+            graphor = g;
+        }
+        
+        private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
+        {
+            isPressed = false;
+            if (!mooved)
+            {
+                if (toolIndex == 0)
+                {
+                    SolidBrush br = new SolidBrush(pen.Color);
+                    graphics.FillEllipse(br, e.X - pen.Width / 2, e.Y - pen.Width / 2, pen.Width, pen.Width);
+                    pictureBox1.Image = map;
+                }
+                if (toolIndex == 1)
+                {
+                    SolidBrush br = new SolidBrush(eraser.Color);
+                    graphics.FillEllipse(br, e.X - eraser.Width / 2, e.Y - eraser.Width / 2, eraser.Width, eraser.Width);
+                    pictureBox1.Image = map;
+                }
+                
+            }else
+            {
+                if (toolIndex == 4)
+                {
+                    if (isDragged && dragTime>=0.1)
+                    {
+                        isDragged = false;
+                        //l.Draw(graphics);
+                    } else
+                    {
+                        //l.endPoint = e.Location;
+                        l.Draw(graphics);
+                        //pictureBox1.Invalidate();
+                    }
+                    //pictureBox1.Invalidate();
+                    //pictureBox1.Image = map;
+                }
+            }
+            arrayPoints.ResetPoints();
+            //pictureBox1.Invalidate();
+            //pictureBox1.Image = map;
+        }
+        private void button3_Click(object sender, EventArgs e)  //выбор цвета
+        {
+            pen.Color = ((Button)sender).BackColor;
+            button11.BackColor = pen.Color;
+        }
+        private void button10_Click(object sender, EventArgs e) //установка пользовательского цвета
+        {
+            if (colorDialog1.ShowDialog() == DialogResult.OK)
+            {
+                pen.Color = colorDialog1.Color;
+                ((Button)sender).BackColor = colorDialog1.Color;
+                button11.BackColor = pen.Color;
+            }
+        }
+        private void thickBar_ValueChanged(object sender, EventArgs e)
+        {
+            pen.Width = thickBar.Value;
+            eraser.Width = thickBar.Value;
+            label2.Text = thickBar.Value.ToString();
+        }
+        private void saveBtn_Click(object sender, EventArgs e)
+        {
+            saveFileDialog1.Title = "Сохранить картинку как ...";
+            saveFileDialog1.Filter = "PNG File(*.png)|*.png|" + "JPEG File(*.jpg)|*.jpg";
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                string fileName = saveFileDialog1.FileName;
+                string strFilExtn = fileName.Remove(0, fileName.Length - 3);
+                switch (strFilExtn)
+                {
+                    case "jpg": pictureBox1.Image.Save(fileName, System.Drawing.Imaging.ImageFormat.Jpeg); break;
+                    case "png": pictureBox1.Image.Save(fileName, System.Drawing.Imaging.ImageFormat.Png); break;
+                    default: break;
+                }
+            }
+        }
+        private void clearBtn_Click(object sender, EventArgs e)
+        {
+            graphics.Clear(pictureBox1.BackColor);
+            cleared = true;
+            pictureBox1.Invalidate();
+        }
+        private void button_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+            if (currentButton != null)
+            {
+                currentButton.FlatAppearance.BorderSize = initialBorderSize;
+            }
+            button.FlatAppearance.BorderSize = 3;
+            currentButton = button;
+        }
+        private void eraserBtn_Click(object sender, EventArgs e)
+        {
+            toolIndex = 1;
+            button_Click(sender, e);
+            button11.Visible = false;
+            label10.Visible = true;
+        }
+        private void pencilBtn_Click(object sender, EventArgs e)
+        {
+            toolIndex = 0;
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void fillBtn_Click(object sender, EventArgs e)
+        {
+            toolIndex = 2;
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void Fill(int x, int y, Color new_color)
+        {
+            Color old_color = map.GetPixel(x, y);
+            Stack<Point> pixel = new Stack<Point>();
+            pixel.Push(new Point(x,y));
+            map.SetPixel(x,y,new_color);
+            if (old_color == new_color) return;
+            while (pixel.Count > 0)
+            {
+                Point pt = (Point)pixel.Pop();
+                if (pt.X>0 && pt.Y>0 && pt.X<map.Width-1 && pt.Y < map.Height - 1)
+                {
+                    validate(pixel, pt.X - 1, pt.Y, old_color, new_color);
+                    validate(pixel, pt.X , pt.Y - 1, old_color, new_color);
+                    validate(pixel, pt.X + 1, pt.Y, old_color, new_color);
+                    validate(pixel, pt.X, pt.Y + 1, old_color, new_color);
+                }
+            }
+            //pictureBox1.Invalidate();
+            pictureBox1.Image = map;
+        }
+        private void validate(Stack<Point> st, int x, int y, Color old_color, Color new_color)
+        {
+            Color cx = map.GetPixel(x, y);
+            if (cx == old_color)
+            {
+                st.Push(new Point(x, y));
+                map.SetPixel(x, y, new_color);
+            }
+        }
+        private void pipetteBtn_Click(object sender, EventArgs e)
+        {
+            toolIndex = 3;
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void lineBtn_Click(object sender, EventArgs e)
+        {
+            toolIndex = 4;
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void circleBtn_Click(object sender, EventArgs e)
+        {
+            if (methIndex == 0)
+            {
+                toolIndex = 5;
+            }
+            else
+            {
+                toolIndex = 8;
+            }
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void squareBtn_Click(object sender, EventArgs e)
+        {
+            if (methIndex == 0)
+            {
+                toolIndex = 6;
+            }
+            else
+            {
+                toolIndex = 9;
+            }
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void rectangleBtn_Click(object sender, EventArgs e)
+        {
+            if (methIndex == 0)
+            {
+                toolIndex = 7;
+            }
+            else
+            {
+                toolIndex = 10;
+            }
+            button_Click(sender, e);
+            button11.Visible = true;
+            label10.Visible = false;
+        }
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox1.Text == comboBox1.Items[0].ToString())
+            {
+                methIndex = 0;
+            }else if (comboBox1.Text == comboBox1.Items[1].ToString())
+            {
+                methIndex = 1;
+            }
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            dragTime+= 0.1;
+            if (dragTime>=0.2)
+            {
+                timer1.Stop();
+            }
+        }
+
+        private void comboBox1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            e.Handled = true;
+        }
+        public bool IsBetween(double x1, double y1, double x2, double y2, double x3, double y3)
+        {
+            double distance1 = Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+            double distance2 = Math.Sqrt(Math.Pow(x3 - x1, 2) + Math.Pow(y3 - y1, 2));
+            double distance3 = Math.Sqrt(Math.Pow(x3 - x2, 2) + Math.Pow(y3 - y2, 2));
+            return ApproximatelyEqual(distance1, distance2 + distance3) ||
+                   ApproximatelyEqual(distance1, distance2) ||
+                   ApproximatelyEqual(distance1, distance3);
+        }
+
+        public bool ApproximatelyEqual(double x, double y, double epsilon = 0.1)
+        {
+            return Math.Abs(x - y) < epsilon;
+        }
+Классы:
+public interface Figure
+    {
+        void Draw();
+    }
+    public abstract class Figures:Figure
+    {
+        public int a;
+        public void Draw()
+        {
+            a = 1;
+        }
+    }
+    public class ArrayPoints
+    {
+        int index = 0;
+        Point[] points;
+        public ArrayPoints(int size)
+        {
+            if (size <= 0)
+            {
+                size = 2;
+            }
+            points = new Point[size];
+        }
+        public void SetPoint(int x, int y)
+        {
+            if (index >= points.Length)
+            {
+                index = 0;
+            }
+            points[index] = new Point(x, y);
+            index++;
+        }
+        public void ResetPoints()
+        {
+            index = 0;
+        }
+        public int GetCount()
+        {
+            return index;
+        }
+        public Point[] GetPoints()
+        {
+            return points;
+        }
+    }
+    public class Line
+    {
+        public Point startPoint, endPoint;
+        public Graphics gra;
+        public Pen pen;
+        public Line(Point startP, Point endP, Pen pen)
+        {
+            this.startPoint = startP;
+            this.endPoint = endP;
+            this.pen = pen;
+        }
+        public void Draw(Graphics g)
+        {
+            g.DrawLine(this.pen, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
+        }
+        public void Dragg(Point x1, Point x2)
+        {
+            startPoint.X = startPoint.X + (x2.X - x1.X);
+            startPoint.Y = startPoint.Y - (x1.Y - x2.Y);
+            endPoint.X = endPoint.X + (x2.X - x1.X);
+            endPoint.Y = endPoint.Y - (x1.Y - x2.Y);
+        }
+    }
+    public class Square
+    {
+        public void Draw()
+        {
+
+        }
+    }
